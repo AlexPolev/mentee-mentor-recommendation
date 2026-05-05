@@ -40,7 +40,7 @@ async def recommend_from_json_files(
 ) -> RecommendationResponse:
     mentee = get_mentee_by_id(request.mentee_id)
 
-    # Пока оставляем как есть: отправляем первые 30 менторов.
+    # Отправляем первые 30 менторов (ограничение API Yandex).
     mentors = load_mentors()[:30]
 
     prompt = build_yandex_gpt_recommendation_prompt(
