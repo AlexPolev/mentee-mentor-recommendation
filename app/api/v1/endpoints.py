@@ -1,14 +1,34 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 
 from app.models.v1.recommendation import (
     RecommendationByMenteeRequest,
     RecommendationResponse,
 )
-from app.services.json_storage import get_mentee_by_id, load_mentors
+from app.services.json_storage import get_mentee_by_id, load_mentees, load_mentors
 from app.services.prompt_builder import build_yandex_gpt_recommendation_prompt
 from app.services.yandex_gpt_service import YandexGPTService
 
+
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
+
+templates = Jinja2Templates(directory="app/templates")
+
+
+@router.get("/ui", response_class=HTMLResponse)
+async def recommendations_ui(request: Request) -> HTMLResponse:
+    mentees = load_mentees()
+    mentors = load_mentors()
+
+    return templates.TemplateResponse(
+        "recommendations.html",
+        {
+            "request": request,
+            "mentees": mentees,
+            "mentors": mentors,
+        },
+    )
 
 
 @router.post(
@@ -20,7 +40,7 @@ async def recommend_from_json_files(
 ) -> RecommendationResponse:
     mentee = get_mentee_by_id(request.mentee_id)
 
-    # ВАЖНО: для первого теста не отправляем весь mentors.json
+    # Пока оставляем как есть: отправляем первые 30 менторов.
     mentors = load_mentors()[:30]
 
     prompt = build_yandex_gpt_recommendation_prompt(

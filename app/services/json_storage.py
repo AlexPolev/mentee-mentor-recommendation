@@ -57,3 +57,13 @@ def get_mentee_by_id(mentee_id: str) -> dict[str, Any]:
         status_code=404,
         detail=f"Менти с id={mentee_id} не найден",
     )
+
+
+def get_mentor_by_id(mentor_id: str) -> dict[str, Any] | None:
+    mentors = load_mentors()
+
+    for mentor in mentors:
+        if mentor.get("id") == mentor_id:
+            return mentor
+
+    return None
