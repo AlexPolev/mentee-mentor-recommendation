@@ -1,0 +1,16 @@
+{
+  "mentees_count": 1202,
+  "mentors_count": 1015,
+  "mentees_large_size_mb": 1.7,
+  "mentors_large_size_mb": 1.45,
+  "profile_completeness_distribution_mentees": {
+    "high": 481,
+    "medium": 360,
+    "low": 361
+  },
+  "profile_completeness_distribution_mentors": {
+    "high": 405,
+    "medium": 307,
+    "low": 303
+  }
+}
