@@ -22,9 +22,9 @@ async def recommendations_ui(request: Request) -> HTMLResponse:
     mentors = load_mentors()
 
     return templates.TemplateResponse(
-        "recommendations.html",
-        {
-            "request": request,
+        name="recommendations.html",
+        request=request,
+        context={
             "mentees": mentees,
             "mentors": mentors,
         },
