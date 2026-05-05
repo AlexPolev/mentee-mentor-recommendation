@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Рекомендация менторов</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 32px;
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            color: #111;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            margin-bottom: 24px;
+            color: #444;
+        }
+
+        .panel {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .row {
+            display: flex;
+            gap: 16px;
+            align-items: end;
+            flex-wrap: wrap;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-weight: 600;
+        }
+
+        select,
+        input {
+            min-width: 260px;
+            padding: 10px;
+            border: 1px solid #aaa;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #fff;
+            color: #111;
+        }
+
+        button {
+            padding: 11px 18px;
+            border: none;
+            border-radius: 8px;
+            background: #111;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            background: #777;
+            cursor: not-allowed;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .card {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            padding: 18px;
+        }
+
+        .card h2,
+        .card h3 {
+            margin-top: 0;
+        }
+
+        .muted {
+            color: #666;
+        }
+
+        .tag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .tag {
+            padding: 5px 8px;
+            border: 1px solid #ccc;
+            border-radius: 999px;
+            background: #fafafa;
+            font-size: 12px;
+        }
+
+        .mentor-card {
+            border-left: 5px solid #111;
+        }
+
+        .rank {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: #111;
+            color: #fff;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        .score {
+            font-weight: 700;
+        }
+
+        .section-title {
+            margin-top: 32px;
+            margin-bottom: 12px;
+        }
+
+        .error {
+            padding: 14px;
+            border: 1px solid #b00020;
+            border-radius: 8px;
+            background: #fff;
+            color: #b00020;
+            white-space: pre-wrap;
+        }
+
+        .loading {
+            padding: 14px;
+            border: 1px solid #aaa;
+            border-radius: 8px;
+            background: #fff;
+            color: #111;
+        }
+
+        ul {
+            margin-top: 8px;
+            padding-left: 20px;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            background: #f7f7f7;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            overflow-x: auto;
+        }
+
+        @media (max-width: 850px) {
+            body {
+                padding: 16px;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            select,
+            input {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Рекомендательная система ментор-менти</h1>
+    <div class="subtitle">
+        Выберите менти, посмотрите его характеристики и получите рекомендации от YandexGPT.
+    </div>
+
+    <div class="panel">
+        <div class="row">
+            <div class="field">
+                <label for="menteeSelect">Менти</label>
+                <select id="menteeSelect">
+                    <option value="">Выберите менти</option>
+                    {% for mentee in mentees %}
+                        <option value="{{ mentee.id }}">
+                            {{ mentee.id }} — {{ mentee.name or "без имени" }} — {{ mentee.profile_completeness or "unknown" }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="topN">Количество рекомендаций</label>
+                <input id="topN" type="number" min="1" max="20" value="5">
+            </div>
+
+            <button id="recommendButton" disabled>
+                Сделать рекомендацию
+            </button>
+        </div>
+    </div>
+
+    <div id="menteeBlock"></div>
+
+    <div id="statusBlock"></div>
+
+    <div id="resultBlock"></div>
+</div>
+
+<script>
+    const mentees = {{ mentees | tojson }};
+    const mentors = {{ mentors | tojson }};
+
+    const menteeById = Object.fromEntries(mentees.map(item => [item.id, item]));
+    const mentorById = Object.fromEntries(mentors.map(item => [item.id, item]));
+
+    const menteeSelect = document.getElementById("menteeSelect");
+    const topNInput = document.getElementById("topN");
+    const recommendButton = document.getElementById("recommendButton");
+    const menteeBlock = document.getElementById("menteeBlock");
+    const statusBlock = document.getElementById("statusBlock");
+    const resultBlock = document.getElementById("resultBlock");
+
+    function valueOrDash(value) {
+        if (value === null || value === undefined || value === "") {
+            return "—";
+        }
+
+        if (Array.isArray(value)) {
+            return value.length ? value.join(", ") : "—";
+        }
+
+        if (typeof value === "object") {
+            return JSON.stringify(value, null, 2);
+        }
+
+        return value;
+    }
+
+    function renderTags(values) {
+        if (!values || !values.length) {
+            return `<span class="muted">—</span>`;
+        }
+
+        return `
+            <div class="tag-list">
+                ${values.map(value => `<span class="tag">${value}</span>`).join("")}
+            </div>
+        `;
+    }
+
+    function renderMenteeCard(mentee) {
+        if (!mentee) {
+            menteeBlock.innerHTML = "";
+            return;
+        }
+
+        menteeBlock.innerHTML = `
+            <div class="card">
+                <h2>Профиль менти</h2>
+                <div class="grid">
+                    <div>
+                        <p><b>ID:</b> ${valueOrDash(mentee.id)}</p>
+                        <p><b>Имя:</b> ${valueOrDash(mentee.name)}</p>
+                        <p><b>Заполненность профиля:</b> ${valueOrDash(mentee.profile_completeness)}</p>
+                        <p><b>Сценарий теста:</b> ${valueOrDash(mentee.test_scenario)}</p>
+                        <p><b>Цель:</b> ${valueOrDash(mentee.goal)}</p>
+                        <p><b>Текущая роль:</b> ${valueOrDash(mentee.current_role)}</p>
+                        <p><b>Целевая роль:</b> ${valueOrDash(mentee.target_role)}</p>
+                        <p><b>Уровень:</b> ${valueOrDash(mentee.level)}</p>
+                    </div>
+                    <div>
+                        <p><b>Индустрия:</b> ${valueOrDash(mentee.industry)}</p>
+                        <p><b>Формат:</b> ${valueOrDash(mentee.preferred_format)}</p>
+                        <p><b>Язык:</b> ${valueOrDash(mentee.language)}</p>
+                        <p><b>Часовой пояс:</b> ${valueOrDash(mentee.timezone)}</p>
+                        <p><b>Доступность:</b> ${valueOrDash(mentee.availability)}</p>
+                        <p><b>Бюджет:</b> ${valueOrDash(mentee.budget)}</p>
+                        <p><b>Коммуникационные предпочтения:</b> ${valueOrDash(mentee.communication_preferences)}</p>
+                    </div>
+                </div>
+
+                <p><b>Описание проблемы:</b></p>
+                <p>${valueOrDash(mentee.problem_description)}</p>
+
+                <p><b>Навыки для развития:</b></p>
+                ${renderTags(mentee.skills_to_develop)}
+
+                <p><b>Ограничения:</b></p>
+                ${renderTags(mentee.constraints)}
+            </div>
+        `;
+    }
+
+    function renderMentorProfile(mentor) {
+        if (!mentor) {
+            return `<p class="muted">Полный профиль ментора не найден в mentors.json.</p>`;
+        }
+
+        return `
+            <div class="grid">
+                <div>
+                    <p><b>Роль:</b> ${valueOrDash(mentor.role)}</p>
+                    <p><b>Компания:</b> ${valueOrDash(mentor.company)}</p>
+                    <p><b>Уровень:</b> ${valueOrDash(mentor.level)}</p>
+                    <p><b>Опыт:</b> ${valueOrDash(mentor.years_of_experience)} лет</p>
+                    <p><b>Цена:</b> ${valueOrDash(mentor.price)}</p>
+                    <p><b>Рейтинг:</b> ${valueOrDash(mentor.rating)}</p>
+                    <p><b>Сессий:</b> ${valueOrDash(mentor.sessions_count)}</p>
+                </div>
+                <div>
+                    <p><b>Язык:</b> ${valueOrDash(mentor.language)}</p>
+                    <p><b>Часовой пояс:</b> ${valueOrDash(mentor.timezone)}</p>
+                    <p><b>Доступность:</b> ${valueOrDash(mentor.availability)}</p>
+                    <p><b>Стиль менторства:</b> ${valueOrDash(mentor.mentoring_style)}</p>
+                    <p><b>Заполненность профиля:</b> ${valueOrDash(mentor.profile_completeness)}</p>
+                </div>
+            </div>
+
+            <p><b>Описание:</b></p>
+            <p>${valueOrDash(mentor.bio)}</p>
+
+            <p><b>Экспертиза:</b></p>
+            ${renderTags(mentor.expertise)}
+
+            <p><b>Индустрии:</b></p>
+            ${renderTags(mentor.industries)}
+
+            <p><b>Форматы:</b></p>
+            ${renderTags(mentor.formats)}
+        `;
+    }
+
+    function renderRecommendations(data) {
+        const recommendationsHtml = data.recommendations.map(item => {
+            const mentor = mentorById[item.mentor_id];
+
+            return `
+                <div class="card mentor-card">
+                    <span class="rank">#${item.rank}</span>
+                    <h3>${item.mentor_name}</h3>
+                    <p><b>ID:</b> ${item.mentor_id}</p>
+                    <p><b>Оценка YandexGPT:</b> <span class="score">${valueOrDash(item.score)}</span></p>
+
+                    ${renderMentorProfile(mentor)}
+
+                    <h4>Почему YandexGPT выбрал этого ментора</h4>
+                    <p>${valueOrDash(item.explanation)}</p>
+
+                    <h4>Совпавшие факторы</h4>
+                    ${
+                        item.matched_factors && item.matched_factors.length
+                            ? `<ul>${item.matched_factors.map(factor => `<li>${factor}</li>`).join("")}</ul>`
+                            : `<p class="muted">—</p>`
+                    }
+
+                    <h4>Риски / ограничения</h4>
+                    ${
+                        item.possible_risks && item.possible_risks.length
+                            ? `<ul>${item.possible_risks.map(risk => `<li>${risk}</li>`).join("")}</ul>`
+                            : `<p class="muted">—</p>`
+                    }
+                </div>
+            `;
+        }).join("");
+
+        resultBlock.innerHTML = `
+            <h2 class="section-title">Рекомендованные менторы</h2>
+            <div class="grid">
+                ${recommendationsHtml}
+            </div>
+
+            <div class="card">
+                <h2>Логика рекомендации YandexGPT</h2>
+                <p>${valueOrDash(data.recommendation_logic)}</p>
+
+                <h2>Общий вывод</h2>
+                <p>${valueOrDash(data.general_explanation)}</p>
+            </div>
+        `;
+    }
+
+    menteeSelect.addEventListener("change", () => {
+        const menteeId = menteeSelect.value;
+        const mentee = menteeById[menteeId];
+
+        recommendButton.disabled = !menteeId;
+        resultBlock.innerHTML = "";
+        statusBlock.innerHTML = "";
+
+        renderMenteeCard(mentee);
+    });
+
+    recommendButton.addEventListener("click", async () => {
+        const menteeId = menteeSelect.value;
+        const topN = Number(topNInput.value || 5);
+
+        if (!menteeId) {
+            return;
+        }
+
+        recommendButton.disabled = true;
+        statusBlock.innerHTML = `<div class="loading">YandexGPT подбирает менторов. Подождите...</div>`;
+        resultBlock.innerHTML = "";
+
+        try {
+            const response = await fetch("/api/v1/recommendations/yandex-gpt/from-json", {
+                method: "POST",
+                headers: {
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    mentee_id: menteeId,
+                    top_n: topN,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(JSON.stringify(data, null, 2));
+            }
+
+            statusBlock.innerHTML = "";
+            renderRecommendations(data);
+
+        } catch (error) {
+            statusBlock.innerHTML = `
+                <div class="error">
+                    Ошибка при получении рекомендации:
+${error.message}
+                </div>
+            `;
+        } finally {
+            recommendButton.disabled = false;
+        }
+    });
+</script>
+</body>
+</html>
