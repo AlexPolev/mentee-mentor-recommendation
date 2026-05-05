@@ -19,7 +19,9 @@ async def recommend_from_json_files(
     request: RecommendationByMenteeRequest,
 ) -> RecommendationResponse:
     mentee = get_mentee_by_id(request.mentee_id)
-    mentors = load_mentors()
+
+    # ВАЖНО: для первого теста не отправляем весь mentors.json
+    mentors = load_mentors()[:30]
 
     prompt = build_yandex_gpt_recommendation_prompt(
         mentee=mentee,

@@ -2,10 +2,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    yandex_gpt_api_key: str
-    yandex_gpt_folder_id: str
-    yandex_gpt_model: str = "yandexgpt-lite"
-    yandex_gpt_url: str = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
+    yandex_cloud_folder: str
+    yandex_cloud_api_key: str
+    yandex_cloud_model: str = "yandexgpt-5-lite/latest"
+    yandex_cloud_base_url: str = "https://ai.api.cloud.yandex.net/v1"
 
     model_config = SettingsConfigDict(
         env_file=".env",
