@@ -309,15 +309,16 @@ POST /api/v1/recommendations/yandex-gpt/from-json
    - доступность;
    - уровень менти;
    - формат работы.
-3. Реализовать weighted scoring.
-4. Сравнить подходы:
+3. Реализовать следующий алгоритм.
+4. Обосновать выбор между weighted scoring и Personalize PageRank.
+5. Сравнить подходы:
    - naive LLM-ranking;
    - candidate selection + LLM-ranking;
-   - hard filters + weighted score;
+   - hard filters + Personalize PageRank or weighted score;
    - hybrid scoring + LLM explanation.
-5. Сохранять результаты тестов в CSV.
-6. Добавить страницу истории тестовых прогонов.
-7. Добавить автоматический расчет метрик качества рекомендаций.
+6. Сохранять результаты тестов в CSV.
+7. Добавить страницу истории тестовых прогонов.
+8. Добавить автоматический расчет метрик качества рекомендаций.
 
 ## Связь с анализом конкурентов
 
