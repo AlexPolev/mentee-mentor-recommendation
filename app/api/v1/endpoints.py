@@ -3,10 +3,14 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from app.models.v1.recommendation import (
+    PersonalizedPageRankRequest,
     RecommendationByMenteeRequest,
     RecommendationResponse,
 )
 from app.services.json_storage import get_mentee_by_id, load_mentees, load_mentors
+from app.services.personalized_pagerank_service import (
+    PersonalizedPageRankRecommendationService,
+)
 from app.services.prompt_builder import build_yandex_gpt_recommendation_prompt
 from app.services.yandex_gpt_service import YandexGPTService
 
@@ -51,3 +55,21 @@ async def recommend_from_json_files(
 
     service = YandexGPTService()
     return await service.get_recommendations(prompt)
+
+
+@router.post(
+    "/personalized-pagerank/from-json",
+    response_model=RecommendationResponse,
+)
+async def recommend_with_personalized_pagerank(
+    request: PersonalizedPageRankRequest,
+) -> RecommendationResponse:
+    mentee = get_mentee_by_id(request.mentee_id)
+    mentors = load_mentors()
+
+    service = PersonalizedPageRankRecommendationService()
+    return service.recommend(
+        mentee=mentee,
+        mentors=mentors,
+        request=request,
+    )

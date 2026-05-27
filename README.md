@@ -224,6 +224,12 @@ YANDEX_CLOUD_BASE_URL=https://ai.api.cloud.yandex.net/v1
 python -m uvicorn app.main:app --reload
 ```
 
+Для Windows также добавлен быстрый запуск из локального окружения:
+
+```powershell
+.\run_dev_server.cmd
+```
+
 После запуска API будет доступен по адресу:
 
 ```text
@@ -287,16 +293,39 @@ POST /api/v1/recommendations/yandex-gpt/from-json
 }
 ```
 
+### Получить рекомендации через Personalized PageRank
+
+```text
+POST /api/v1/recommendations/personalized-pagerank/from-json
+```
+
+Пример запроса:
+
+```json
+{
+  "mentee_id": "mentee_control_pm_transition",
+  "top_n": 5,
+  "damping_factor": 0.85,
+  "max_iterations": 120,
+  "tolerance": 1e-8
+}
+```
+
+Алгоритм строит граф из выбранного менти, всех менторов и общих признаков:
+целевой роли, навыков, индустрии, формата, языка, уровня, бюджета и признаков
+надежности. Персонализация задается признаками выбранного менти, а ответ имеет
+тот же формат `RecommendationResponse`, что и YandexGPT-эндпоинт.
+
 ## Интерфейс
 
 В интерфейсе можно:
 
 1. выбрать менти из списка;
 2. посмотреть его характеристики;
-3. указать количество рекомендаций;
+3. указать количество рекомендаций и выбрать алгоритм;
 4. нажать кнопку «Сделать рекомендацию»;
 5. получить карточки рекомендованных менторов;
-6. посмотреть объяснение, почему YandexGPT выбрал именно этих менторов.
+6. посмотреть объяснение, почему выбран именно этот набор менторов.
 
 Интерфейс нужен для удобного анализа результатов без чтения сырого JSON.
 
@@ -309,8 +338,8 @@ POST /api/v1/recommendations/yandex-gpt/from-json
    - доступность;
    - уровень менти;
    - формат работы.
-3. Реализовать следующий алгоритм.
-4. Обосновать выбор между weighted scoring и Personalize PageRank.
+3. Сравнить Personalized PageRank с weighted scoring.
+4. Обосновать выбор между weighted scoring и Personalized PageRank.
 5. Сравнить подходы:
    - naive LLM-ranking;
    - candidate selection + LLM-ranking;

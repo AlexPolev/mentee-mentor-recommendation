@@ -30,7 +30,7 @@
         .panel {
             background: #fff;
             border: 1px solid #ddd;
-            border-radius: 12px;
+            border-radius: 8px;
             padding: 20px;
             margin-bottom: 20px;
         }
@@ -78,6 +78,18 @@
             cursor: not-allowed;
         }
 
+        .algorithm-fields {
+            display: contents;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .algorithm-fields.hidden {
+            display: none;
+        }
+
         .grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -87,7 +99,7 @@
         .card {
             background: #fff;
             border: 1px solid #ddd;
-            border-radius: 12px;
+            border-radius: 8px;
             padding: 18px;
         }
 
@@ -131,6 +143,21 @@
 
         .score {
             font-weight: 700;
+        }
+
+        .meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 12px 0;
+        }
+
+        .meta-item {
+            padding: 6px 9px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fafafa;
+            font-size: 13px;
         }
 
         .section-title {
@@ -182,6 +209,10 @@
             input {
                 min-width: 100%;
             }
+
+            .algorithm-fields {
+                display: block;
+            }
         }
     </style>
 </head>
@@ -189,7 +220,7 @@
 <div class="container">
     <h1>Рекомендательная система ментор-менти</h1>
     <div class="subtitle">
-        Выберите менти, посмотрите его характеристики и получите рекомендации от YandexGPT.
+        Выберите менти, посмотрите его характеристики и получите рекомендации от YandexGPT или Personalized PageRank.
     </div>
 
     <div class="panel">
@@ -209,6 +240,26 @@
             <div class="field">
                 <label for="topN">Количество рекомендаций</label>
                 <input id="topN" type="number" min="1" max="20" value="5">
+            </div>
+
+            <div class="field">
+                <label for="algorithmSelect">Алгоритм</label>
+                <select id="algorithmSelect">
+                    <option value="pagerank">Personalized PageRank</option>
+                    <option value="yandex-gpt">YandexGPT</option>
+                </select>
+            </div>
+
+            <div id="pagerankFields" class="algorithm-fields">
+                <div class="field">
+                    <label for="dampingFactor">Damping factor</label>
+                    <input id="dampingFactor" type="number" min="0.5" max="0.95" step="0.01" value="0.85">
+                </div>
+
+                <div class="field">
+                    <label for="maxIterations">Итерации</label>
+                    <input id="maxIterations" type="number" min="10" max="200" value="120">
+                </div>
             </div>
 
             <button id="recommendButton" disabled>
@@ -233,6 +284,10 @@
 
     const menteeSelect = document.getElementById("menteeSelect");
     const topNInput = document.getElementById("topN");
+    const algorithmSelect = document.getElementById("algorithmSelect");
+    const pagerankFields = document.getElementById("pagerankFields");
+    const dampingFactorInput = document.getElementById("dampingFactor");
+    const maxIterationsInput = document.getElementById("maxIterations");
     const recommendButton = document.getElementById("recommendButton");
     const menteeBlock = document.getElementById("menteeBlock");
     const statusBlock = document.getElementById("statusBlock");
@@ -348,7 +403,32 @@
         `;
     }
 
-    function renderRecommendations(data) {
+    function algorithmTitle(algorithm) {
+        return algorithm === "pagerank" ? "Personalized PageRank" : "YandexGPT";
+    }
+
+    function renderAlgorithmMeta(data) {
+        const raw = data.raw_model_response || {};
+
+        if (raw.algorithm !== "personalized_pagerank") {
+            return "";
+        }
+
+        const graph = raw.graph || {};
+
+        return `
+            <div class="meta">
+                <span class="meta-item">Итераций: ${valueOrDash(raw.iterations)}</span>
+                <span class="meta-item">Сошелся: ${raw.converged ? "да" : "нет"}</span>
+                <span class="meta-item">Узлов: ${valueOrDash(graph.nodes_count)}</span>
+                <span class="meta-item">Ребер: ${valueOrDash(graph.edges_count)}</span>
+                <span class="meta-item">Менторов: ${valueOrDash(graph.mentors_count)}</span>
+            </div>
+        `;
+    }
+
+    function renderRecommendations(data, algorithm) {
+        const title = algorithmTitle(algorithm);
         const recommendationsHtml = data.recommendations.map(item => {
             const mentor = mentorById[item.mentor_id];
 
@@ -357,11 +437,11 @@
                     <span class="rank">#${item.rank}</span>
                     <h3>${item.mentor_name}</h3>
                     <p><b>ID:</b> ${item.mentor_id}</p>
-                    <p><b>Оценка YandexGPT:</b> <span class="score">${valueOrDash(item.score)}</span></p>
+                    <p><b>Оценка ${title}:</b> <span class="score">${valueOrDash(item.score)}</span></p>
 
                     ${renderMentorProfile(mentor)}
 
-                    <h4>Почему YandexGPT выбрал этого ментора</h4>
+                    <h4>Почему выбран этот ментор</h4>
                     <p>${valueOrDash(item.explanation)}</p>
 
                     <h4>Совпавшие факторы</h4>
@@ -383,18 +463,23 @@
 
         resultBlock.innerHTML = `
             <h2 class="section-title">Рекомендованные менторы</h2>
+            ${renderAlgorithmMeta(data)}
             <div class="grid">
                 ${recommendationsHtml}
             </div>
 
             <div class="card">
-                <h2>Логика рекомендации YandexGPT</h2>
+                <h2>Логика рекомендации</h2>
                 <p>${valueOrDash(data.recommendation_logic)}</p>
 
                 <h2>Общий вывод</h2>
                 <p>${valueOrDash(data.general_explanation)}</p>
             </div>
         `;
+    }
+
+    function updateAlgorithmFields() {
+        pagerankFields.classList.toggle("hidden", algorithmSelect.value !== "pagerank");
     }
 
     menteeSelect.addEventListener("change", () => {
@@ -408,29 +493,42 @@
         renderMenteeCard(mentee);
     });
 
+    algorithmSelect.addEventListener("change", updateAlgorithmFields);
+
     recommendButton.addEventListener("click", async () => {
         const menteeId = menteeSelect.value;
         const topN = Number(topNInput.value || 5);
+        const algorithm = algorithmSelect.value;
 
         if (!menteeId) {
             return;
         }
 
         recommendButton.disabled = true;
-        statusBlock.innerHTML = `<div class="loading">YandexGPT подбирает менторов. Подождите...</div>`;
+        statusBlock.innerHTML = `<div class="loading">${algorithmTitle(algorithm)} подбирает менторов. Подождите...</div>`;
         resultBlock.innerHTML = "";
 
         try {
-            const response = await fetch("/api/v1/recommendations/yandex-gpt/from-json", {
+            const endpoint = algorithm === "pagerank"
+                ? "/api/v1/recommendations/personalized-pagerank/from-json"
+                : "/api/v1/recommendations/yandex-gpt/from-json";
+            const body = {
+                mentee_id: menteeId,
+                top_n: topN,
+            };
+
+            if (algorithm === "pagerank") {
+                body.damping_factor = Number(dampingFactorInput.value || 0.85);
+                body.max_iterations = Number(maxIterationsInput.value || 120);
+            }
+
+            const response = await fetch(endpoint, {
                 method: "POST",
                 headers: {
                     "Accept": "application/json",
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({
-                    mentee_id: menteeId,
-                    top_n: topN,
-                }),
+                body: JSON.stringify(body),
             });
 
             const data = await response.json();
@@ -440,7 +538,7 @@
             }
 
             statusBlock.innerHTML = "";
-            renderRecommendations(data);
+            renderRecommendations(data, algorithm);
 
         } catch (error) {
             statusBlock.innerHTML = `
@@ -453,6 +551,8 @@ ${error.message}
             recommendButton.disabled = false;
         }
     });
+
+    updateAlgorithmFields();
 </script>
 </body>
 </html>
